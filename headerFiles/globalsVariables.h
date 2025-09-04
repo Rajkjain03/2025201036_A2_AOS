@@ -1,5 +1,5 @@
-#ifndef GLOBALS_H
-#define GLOBALS_H
+#ifndef globalsVariables_H
+#define globalsVariables_H
 
 #include <string>
 #include <vector>
@@ -20,4 +20,4 @@ extern struct termios ogTermios;
 extern pid_t fgPid;
 extern size_t histInd;
 
-#endif // GLOBALS_H
+#endif // globalsVariables_H

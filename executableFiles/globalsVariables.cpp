@@ -1,4 +1,4 @@
-#include "globals.h"
+#include "globalsVariables.h"
 
 using namespace std;
 

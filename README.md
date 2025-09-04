@@ -30,7 +30,7 @@ Name - Raj k jain
                 |__autocomplete.cpp 
                 |___commandsBuiltins.cpp 
                 |___execute.cpp 
-                |___globals.cpp 
+                |___globalsVariables.cpp 
                 |___history.cpp 
                 |___myShell.cpp 
                 |___prompt.cpp 
@@ -40,7 +40,7 @@ Name - Raj k jain
                 |__autocomplete.h 
                 |___commandsBuiltins.h 
                 |___execute.h 
-                |___globals.h 
+                |___globalsVariables.h 
                 |___history.h 
                 |___myShell.h 
                 |___prompt.h 
@@ -82,11 +82,11 @@ myShell.cpp
 Responsibility: The entry point and main loop of the shell.
 Details: this file is responsible for initializing the shell ,handling the primary character-by-charactr input loop, and managing the overall progrm flow. 
 
-src/globals.cpp
+src/globalsVariables.cpp
 Responsibility: Defines all global variables.
-Details: This file provides the actual storage for all global variables declared in include/globals.h 
+Details: This file provides the actual storage for all global variables declared in include/globalsVariables.h 
 
-src/prompt.cpp
+src/displayPromp.cpp
 Responsibility: Manages the display of the shell prompt.
 Details: Contains the promptDisplay() function, which is called before the user enters each new comand. It dynamically gathers the username, system name, and current path.
 
@@ -94,7 +94,7 @@ src/signals.cpp
 Responsibility: Handles all signal logic.
 Details: This file contains the signal handler functions for (CTRL-C), (CTRL-Z), and (CTRL-D). These functions define the custom actions the shell takes when it recives a signal, such as interupting a foreground process or cleaning up terminated background ("zombie") processes.
 
-src/history.cpp
+src/handleHistory.cpp
 Responsibility: Manages command history.
 Details: Contains all logic related to the command history feature, including loaddHist() , saveHist() (to write back to the file on exit), and addToHis() (to add new commands to the in-memory list).
 
@@ -106,7 +106,7 @@ src/builtins.cpp
 Responsibility: Contains the implementation for all shell built-in commands.
 Details: commands like ls, cd, pinfo, history, echo, pwd, and search implemented. 
 
-src/execute.cpp
+src/commandExecute.cpp
 Responsibility: The core command execution engine.
 Details: It contains the set of functions that work together to handle parsing, backgrounding (&), piping (|), I/O redirection (<, >), and the execution of both built-in and system commands.
 

@@ -74,7 +74,7 @@ void executeCommand(const vector<string>& cmdToken) {
         exit(EXIT_SUCCESS); 
     }
 
-    //history
+    //handleHistory
     if (cmdToken[0] == "history") {
         cmndHistory(cmdToken);
         exit(EXIT_SUCCESS);
@@ -239,7 +239,7 @@ void execCmndLn(string& line) {
 
     //  
     if (tokens[0] == "exit") {
-        cout << "\nGG ! Bye." << endl;
+        cout << "\n GG ! Adios." << endl;
         exit(0);
     }
 

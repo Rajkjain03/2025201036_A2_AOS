@@ -20,12 +20,12 @@
 #include <fcntl.h>          //  open() ->  I/O redirection
 #include <signal.h>         //  all signal handling functions: signal() and kill()
 #include <termios.h>        //  terminal I/O settings (tcgetattr, tcsetattr) to enable raw mode for autocomplete
-#include "globals.h"            //  declaring shared global variables
-#include "prompt.h"             //  display the shell prompt
+#include "globalsVariables.h"            //  declaring shared global variables
+#include "displayPromp.h"             //  display the shell prompt
 #include "signalHandler.h"      //  signal handling
-#include "history.h"            //  handle history
+#include "handleHistory.h"            //  handle history
 #include "autocomplete.h"       //  TAB autocompete logic
 #include "commandsBuiltins.h"   //  implementations of all built-in commands (ls, cd, pinfo, etc.)
-#include "execute.h"            //  handles pipes, redirection, and backgrounding
+#include "commandExecute.h"            //  handles pipes, redirection, and backgrounding
 
 #endif // MYSHELL_H
