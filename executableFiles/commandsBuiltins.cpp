@@ -1,41 +1,31 @@
-#include <iostream>
-#include <iomanip>
-#include <algorithm>
-#include <dirent.h>
-#include <sys/stat.h>
-#include <pwd.h>
-#include <grp.h>
-#include <time.h>
-#include <string.h>
-#include "builtins.h"
-#include "globals.h"
+#include "myshell.h"
 
 using namespace std;
 
 // To print file permisions
-void printPerms(mode_t mode)
+void printPerms(mode_t m)
 {   
     //print the drwxr-xr-x string
-    cout << (S_ISDIR(mode) ? 'd' : (S_ISLNK(mode) ? 'l' : '-'));
-    cout << ((mode & S_IRUSR) ? 'r' : '-');
-    cout << ((mode & S_IWUSR) ? 'w' : '-');
-    cout << ((mode & S_IXUSR) ? 'x' : '-');
-    cout << ((mode & S_IRGRP) ? 'r' : '-');
-    cout << ((mode & S_IWGRP) ? 'w' : '-');
-    cout << ((mode & S_IXGRP) ? 'x' : '-');
-    cout << ((mode & S_IROTH) ? 'r' : '-');
-    cout << ((mode & S_IWOTH) ? 'w' : '-');
-    cout << ((mode & S_IXOTH) ? 'x' : '-');
+    cout << (S_ISDIR(m) ? 'd' : (S_ISLNK(m) ? 'l' : '-'));
+    cout << ((m & S_IRUSR) ? 'r' : '-');
+    cout << ((m & S_IWUSR) ? 'w' : '-');
+    cout << ((m & S_IXUSR) ? 'x' : '-');
+    cout << ((m & S_IRGRP) ? 'r' : '-');
+    cout << ((m & S_IWGRP) ? 'w' : '-');
+    cout << ((m & S_IXGRP) ? 'x' : '-');
+    cout << ((m & S_IROTH) ? 'r' : '-');
+    cout << ((m & S_IWOTH) ? 'w' : '-');
+    cout << ((m & S_IXOTH) ? 'x' : '-');
 }
 
 // History
 void cmndHistory(const vector<string>& tkns) {
     // Default number of commands to show
-    int num_to_show = 10; 
+    int nShow = 10; 
     if (tkns.size() > 1) {
         try {
             //stoi -> string to integer 
-            num_to_show = stoi(tkns[1]);
+            nShow = stoi(tkns[1]);
         } catch (const invalid_argument& e) {
             cout << "Error -> History" << endl;
             return;
@@ -43,9 +33,9 @@ void cmndHistory(const vector<string>& tkns) {
     }
 
     // Calculates the correct starting point in the history vector
-    int start_index = max(0, (int)command_history.size() - num_to_show);
-    for (size_t i = start_index; i < command_history.size(); ++i) {
-        cout << " " << i + 1 << "\t" << command_history[i] << endl;
+    int startInd = max(0, (int)cmndHist.size() - nShow);
+    for (size_t i = startInd; i < cmndHist.size(); ++i) {
+        cout << "\t" << cmndHist[i] << endl;
     }
 }
 
@@ -250,104 +240,164 @@ void cmndLs(const vector<string> &tkns)
 }
 
 //pinfo
-void cmndPinfo(const vector<string> &tkns){
+void cmndPinfo(const vector<string>& tkns) {
+    //determine the target pid
     string pStr;
+    //user provided an argument
     if(tkns.size() > 1){
+        //case : pinfo <pid>
+        //Use the pid provided by the user
         pStr = tkns[1];
-    }else{
-
+    }
+        // no argument is given
+    else{
+        // getpid() -> Process ID of your shell program 
+        // use shell's own PID
         pStr = to_string(getpid());
     }
-    // 1. Construct the path to the stat file
-    string stat_path = "/proc/" + pStr + "/stat";
 
-    // 2. Open the file using C-style fopen
-    FILE* stat_file = fopen(stat_path.c_str(), "r");
-    if (stat_file == NULL) {
-        perror("Error -> perror, while opening the file");
+    // constructs the file path to a specific process's status file within Linux's /proc filesystem
+    // procfs -> a special virtual filesystem in Linux that provides real-time information about running processes.
+    // /stat -> stores name of a specific file inside each process's directory that contains detailed status information.
+    string stPth = "/proc/" + pStr + "/stat";
+
+    // Open the file using open() system call
+    //open() -> on success Returns a small, non-negative integer—the file descriptor.
+    int fd = open(stPth.c_str(), O_RDONLY);
+    if (fd == -1) {
+        perror(("Error -> pinfo: cannot open" ));
         return;
     }
 
-    // 3. Read the required fields using fscanf
-    char state;
-    long pgrp, tpgid;
-    long long memory;
+    // Read the entire file into a buff
+    char buff[2048];
+    //read() -> read raw bytes from a file descriptor
+    ssize_t bRead = read(fd, buff, sizeof(buff) - 1);
+    close(fd);
+    if (bRead <= 0) return;
+    // terminate the string with null
+    buff[bRead] = '\0'; 
 
-        // The format string uses %* to read and discard unneeded fields.
-    // We need fields: 3(state), 5(pgrp), 8(tpgid), and 23(memory).
-    fscanf(stat_file, "%*d %*s %c %*d %ld %*d %*d %ld %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %lld",
-           &state, &pgrp, &tpgid, &memory);
-    
-    // 4. Close the file
-    fclose(stat_file);
-    
-    string exe_path_str = "/proc/" + pStr + "/exe";
-    char exe_path[4096];
-    ssize_t len = readlink(exe_path_str.c_str(), exe_path, sizeof(exe_path) - 1);
-    
-    string exe_path_display;
-    if (len != -1) {
-        exe_path[len] = '\0';
-        exe_path_display = exe_path;
-        string home_path = shellHomeDir;
-        if (exe_path_display.rfind(home_path, 0) == 0) {
-            exe_path_display.replace(0, home_path.length(), "~");
-        }
-    } else {
-        exe_path_display = "Path not found";
+    // Parse the buff using strtok()
+    // strtok() ->used to split a string into a series of smaller strings, or "tokens," based on a set of delimiter characters.
+    char *token = strtok(buff, " ");
+    int cnt = 1;
+    string state, pgrp, tpgid, memory;
+
+    while (token != NULL) {
+        if (cnt == 3) state = token;
+        else if (cnt == 5) pgrp = token;
+        else if (cnt == 8) tpgid = token;
+        else if (cnt == 23) memory = token;
+        
+        token = strtok(NULL, " ");
+        cnt++;
     }
 
-    // 5. Print the formatted output
-    // cout << "pid -- " << pStr << endl;
+    // exePthStr -> it's a link that points to the actual executable
+    string exePthStr = "/proc/" + pStr + "/exe";
+    char exePth[4096];
+    // readlink() -> read the destination of a link
+    ssize_t len = readlink(exePthStr.c_str(), exePth, sizeof(exePth) - 1);
+    
+    //formating -.> checking if its inside shell's home directory and replacing that part with a ~ 
+    string exePthDisp;
+    if (len != -1) {
+        exePth[len] = '\0';
+        exePthDisp = exePth;
+        string hPth = shellHomeDir;
+        if (exePthDisp.rfind(hPth, 0) == 0) {
+            exePthDisp.replace(0, hPth.length(), "~");
+        }
+    } else {
+        exePthDisp = "Path not found";
+    }
+
+    //Printing Process Status,memory ,"Executable Pat
     cout << "Process Status -- " << state;
     if (pgrp == tpgid) {
-        cout << "+";   
+        cout << "+";
     }
     cout << endl;
     cout << "memory -- " << memory << " {Virtual Memory}" << endl;
-    cout << "Executable Path -- " << exe_path_display << endl;
+    cout << "Executable Path -- " << exePthDisp << endl;
 }
 
-//Search
-bool recFun(const string& base_path, const char* target_name){
-    DIR* dir = opendir(base_path.c_str());
+//recursive function to look through a directory and calling itself on any subdirectories it finds. 
+bool recFun(const string& basePath, const char* trgtName){
+    //opendir -> opens a directory and returns a pointer to a directory stream
+    DIR* dir = opendir(basePath.c_str());
     if (dir == nullptr) {
         return false;
     }
 
     struct dirent* e;
+    //  readdir(dir) -> reads the next entry from a directory stream, which you get by calling opendir()
     while ((e = readdir(dir)) != nullptr) {
-        if (strcmp(e->d_name, target_name) == 0) {
+        //check if we find the file
+        if (strcmp(e->d_name, trgtName) == 0) {
             closedir(dir);
             return true;
         }
+        //recursion check if it is subdirectry
         if (e->d_type == DT_DIR) {
+            // Check if '.' and '..' ignore it.
             if (strcmp(e->d_name, ".") != 0 && strcmp(e->d_name, "..") != 0) {
-                string new_path = base_path + "/" + e->d_name;
-                if (recFun(new_path, target_name)) {
+                string nPath = basePath + "/" + e->d_name;
+                if (recFun(nPath, trgtName)) {
                     closedir(dir);
                     return true;
                 }
             }
         }
     }
+    //found nothing in thsi directory.
     closedir(dir);
     return false;
 }
 
 //search command
 void cmndSearch(const vector<string>& tkns) {
+    //check for the argument it should be 2. e.g - (search xyz.txt)
     if (tkns.size() != 2) {
         cout << "Error -> in search: incorrect number of arguments." << endl;
         return;
     }
-    const char* target_name = tkns[1].c_str();
-    bool found = recFun(".", target_name);
+
+    const char* trgtName = tkns[1].c_str();
+    // recursive search from the current directory "."
+    bool found = recFun(".", trgtName);
     if (found) {
         cout << "True" << endl;
     } else {
         cout << "False" << endl;
     }
+}
+
+
+void cmndEcho(const vector<string>& cmdToken){
+    //traverse 
+    for (auto it = cmdToken.begin() + 1; it != cmdToken.end(); ++it)
+        {
+            string tknToPrnt = *it;
+
+            // Case : Double Qoutes -> Check if the token starts and ends with a double quote.
+            if (!tknToPrnt.empty() && tknToPrnt.front() == '"' && tknToPrnt.back() == '"') {
+                // Reomove the double quotees
+                // substring excluding double quotees
+                tknToPrnt = tknToPrnt.substr(1, tknToPrnt.length() - 2);
+            }
+            
+            //print the token.
+            cout << tknToPrnt;
+
+            //add spaces if not lst elements
+            if (next(it) != cmdToken.end()) {
+                cout << " ";
+            }
+        }
+        cout << endl;
+        exit(EXIT_SUCCESS);
 }
 
 //for "cd" command

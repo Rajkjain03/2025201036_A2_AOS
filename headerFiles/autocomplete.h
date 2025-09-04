@@ -3,8 +3,10 @@
 
 #include <string>
 #include <vector>
+using namespace std;
 
-std::string find_longest_common_prefix(const std::vector<std::string>& matches);
-void handle_autocomplete(std::string& line);
+//declaring functions
+string findLcsPrefix(const vector<string>& matches);
+void autoCmpltFunctionHandler(string& line);
 
 #endif // AUTOCOMPLETE_H

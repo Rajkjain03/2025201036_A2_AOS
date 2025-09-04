@@ -2,9 +2,10 @@
 #define HISTORY_H
 
 #include <string>
+using namespace std;
 
-void load_history();
-void save_history();
-void add_to_history(const std::string& command);
+void loaddHist();
+void saveHist();
+void addToHis(const string& command);
 
 #endif // HISTORY_H

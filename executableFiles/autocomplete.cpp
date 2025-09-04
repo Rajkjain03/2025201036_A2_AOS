@@ -1,43 +1,35 @@
-#include <iostream>
-#include <sstream>
-#include <dirent.h>
-#include <sys/stat.h>
-#include <algorithm>
-#include <stdlib.h>
-#include "autocomplete.h"
-#include "prompt.h"
+#include "myshell.h"
 
 using namespace std;
 
-// Helper to find the longest common prefix for multiple matches ---
-string find_longest_common_prefix(const vector<string>& matches) {
-    if (matches.empty()) return "";
-    string first = matches[0];
-    for (size_t i = 0; i < first.length(); ++i) {
-        for (size_t j = 1; j < matches.size(); ++j) {
-            if (i >= matches[j].length() || matches[j][i] != first[i]) {
-                return first.substr(0, i);
+// findLcsPrefix -> Function to find the longest common preFix for multiple mtchs
+string findLcsPrefix(const vector<string>& mtchs) {
+    if (mtchs.empty()) return "";
+    string ft = mtchs[0];
+    for (size_t i = 0; i < ft.length(); ++i) {
+        for (size_t j = 1; j < mtchs.size(); ++j) {
+            if (i >= mtchs[j].length() || mtchs[j][i] != ft[i]) {
+                return ft.substr(0, i);
             }
         }   
     }
-    return first;
+    return ft;
 }
 
-// The core autocomplete logic function 
-void handle_autocomplete(string& line) {
-    size_t word_start = line.find_last_of(" \t\n|;&<>");
-    word_start = (word_start == string::npos) ? 0 : word_start + 1;
+void autoCmpltFunctionHandler(string& l) {
+    size_t wrdStrt = l.find_last_of(" \t\n|;&<>");
+    wrdStrt = (wrdStrt == string::npos) ? 0 : wrdStrt + 1;
 
-    string current_word = line.substr(word_start);
-    bool is_command = (line.find_first_of(" \t") == string::npos && word_start == 0);
+    string currWrd = l.substr(wrdStrt);
+    bool isCmnd = (l.find_first_of(" \t") == string::npos && wrdStrt == 0);
 
-    vector<string> matches;
+    vector<string> mtchs;
     
-    // --- Generate potential matches ---
-    if (is_command) {
+    // Generate potential mtchs 
+    if (isCmnd) {
         // Match Commands from PATH
-        string path_env = getenv("PATH");
-        stringstream ss(path_env);
+        string pthEnv = getenv("PATH");
+        stringstream ss(pthEnv);
         string path_dir;
         while (getline(ss, path_dir, ':')) {
             DIR* dir = opendir(path_dir.c_str());
@@ -45,7 +37,7 @@ void handle_autocomplete(string& line) {
                 struct dirent* e;
                 while ((e = readdir(dir)) != nullptr) {
                     string name = e->d_name;
-                    if (name.rfind(current_word, 0) == 0) matches.push_back(name);
+                    if (name.rfind(currWrd, 0) == 0) mtchs.push_back(name);
                 }
                 closedir(dir);
             }
@@ -57,38 +49,41 @@ void handle_autocomplete(string& line) {
             struct dirent* e;
             while ((e = readdir(dir)) != nullptr) {
                 string name = e->d_name;
-                if (name.rfind(current_word, 0) == 0) matches.push_back(name);
+                if (name.rfind(currWrd, 0) == 0) mtchs.push_back(name);
             }
             closedir(dir);
         }
     }
-    sort(matches.begin(), matches.end());
+    sort(mtchs.begin(), mtchs.end());
 
-    if (matches.empty()) return;
+    if (mtchs.empty()) return;
 
-    // --- Process the matches ---
-    if (matches.size() == 1) {
-        // Single match: complete it
-        string completion = matches[0].substr(current_word.length());
-        line += completion;
+    // Handle the matches
+    if (mtchs.size() == 1) {
+        // case : only single match 
+        // if its only single match them complete it
+        string completion = mtchs[0].substr(currWrd.length());
+        l += completion;
         struct stat st;
-        if (stat(matches[0].c_str(), &st) == 0 && !S_ISDIR(st.st_mode)) {
-             line += " "; // Add a space if it's a file
+        if (stat(mtchs[0].c_str(), &st) == 0 && !S_ISDIR(st.st_mode)) {
+            // if its file add sapce
+             l += " "; 
         }
     } else {
-        // Multiple matches: find common prefix
-        string prefix = find_longest_common_prefix(matches);
-        if (prefix.length() > current_word.length()) {
-            line += prefix.substr(current_word.length());
+        // case : Multiple matches
+        // In case of multiple matches find common preFix
+        string preFix = findLcsPrefix(mtchs);
+        if (preFix.length() > currWrd.length()) {
+            l += preFix.substr(currWrd.length());
         } else {
             // If TAB pressed again, show all options
             cout << endl;
-            for (const auto& match : matches) {
+            for (const auto& match : mtchs) {
                 cout << match << "\t";
             }
             cout << endl;
             promptDisplay();
-            cout << line;
+            cout << l;
             fflush(stdout);
         }
     }

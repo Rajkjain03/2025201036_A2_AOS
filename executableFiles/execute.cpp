@@ -1,14 +1,4 @@
-#include <iostream>
-#include <sstream>
-#include <vector>
-#include <string>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <fcntl.h>
-#include <signal.h>
-#include "execute.h"
-#include "builtins.h"
-#include "globals.h"
+#include "myshell.h"
 
 using namespace std;
 
@@ -40,15 +30,9 @@ void executeCommand(const vector<string>& cmdToken) {
 
     // echo -> prints arguments to console.
      if (cmdToken[0] == "echo")
-    {
-        // Start traversing all the words after echo command.
-        // Loop iterates through the vector of tkns.
-        for (auto it = cmdToken.begin() + 1; it != cmdToken.end(); ++it)
-        {
-            cout << *it << " ";
-        }
-        cout << endl;
-        exit(EXIT_SUCCESS); 
+    {   
+        cmndEcho(cmdToken);
+        return ;
     }
     
     // cd -> change current working directory
@@ -98,12 +82,12 @@ void executeCommand(const vector<string>& cmdToken) {
 
     // `exit` command
     if (cmdToken[0] == "exit")
-    {   cout << "\n GG ! BYE ." << endl;
+    {   cout << "\n GG ! Adiós ." << endl;
         exit(0);
         
     }
 
-    // Handle other commands -> using execvp()
+    // Handle other cmnds -> using execvp()
     // child process creation
     vector<char *> c_args;
     for (const auto &t : cmdToken) {
@@ -118,8 +102,8 @@ void executeCommand(const vector<string>& cmdToken) {
 }
 
 
-// --- Single command executor (handles redirection) ---
-void execute_single_command(const vector<string>& tkns) {
+//  Single command executor (handles redirection) 
+void execSingCmnd(const vector<string>& tkns) {
     if (tkns.empty()) return;
 
     vector<string> cmdToken;
@@ -161,67 +145,66 @@ void execute_single_command(const vector<string>& tkns) {
 }
 
 
-//  Main execution function that handles pipes ---
+//  Main execution function that handles pipes 
 // Pipe handler 
-void execute_piped_commands(const string& command_line) {
-    stringstream command_stream(command_line);
-    string pipe_segment;
-    vector<vector<string>> commands;
+void execPipedCmnd(const string& command_line) {
+    stringstream cmndStrm(command_line);
+    string pipeSgmnt;
+    vector<vector<string>> cmnds;
 
-    // 1. Split the command line by the pipe '|' delimiter
-    while (getline(command_stream, pipe_segment, '|')) {
-        stringstream segment_stream(pipe_segment);
+    // Split the command line by the pipe '|' delimiter
+    while (getline(cmndStrm, pipeSgmnt, '|')) {
+        stringstream sgmntStrm(pipeSgmnt);
         vector<string> tkns;
         string token;
-        while (segment_stream >> token) {
+        while (sgmntStrm >> token) {
             tkns.push_back(token);
         }
         if (!tkns.empty()) {
-            commands.push_back(tkns);
+            cmnds.push_back(tkns);
         }
     }
 
-    if (commands.empty()) return;
-
+    if (cmnds.empty()) return;
     // If there's only one command, no piping is needed.
     // Execute it with I/O redirection handling.
-    if (commands.size() == 1) {
-        execute_single_command(commands[0]);
+    if (cmnds.size() == 1) {
+        execSingCmnd(cmnds[0]);
         return;
     }
 
-    // --- PIPING LOGIC ---
-    size_t num_pipes = commands.size() - 1;
-    vector<int> pipe_fds(2 * num_pipes);
+    // PIPING LOGIC 
+    size_t num_pipes = cmnds.size() - 1;
+    vector<int> pipeFds(2 * num_pipes);
 
-    // Create all the pipes upfront
+    // creating all the pipes upfront
     for (size_t i = 0; i < num_pipes; ++i) {
-        if (pipe(pipe_fds.data() + i * 2) < 0) {
+        if (pipe(pipeFds.data() + i * 2) < 0) {
             perror("pipe");
             return;
         }
     }
 
     // Launch all the child processes
-    for (size_t i = 0; i < commands.size(); ++i) {
+    for (size_t i = 0; i < cmnds.size(); ++i) {
         pid_t pid = fork();
         if (pid == 0) { // Child Process
             // If not the first command, redirect stdin from the previous pipe
             if (i > 0) {
-                dup2(pipe_fds[(i - 1) * 2], STDIN_FILENO);
+                dup2(pipeFds[(i - 1) * 2], STDIN_FILENO);
             }
             // If not the last command, redirect stdout to the next pipe
-            if (i < commands.size() - 1) {
-                dup2(pipe_fds[i * 2 + 1], STDOUT_FILENO);
+            if (i < cmnds.size() - 1) {
+                dup2(pipeFds[i * 2 + 1], STDOUT_FILENO);
             }
 
             // Close all pipe fds in the child
             for (size_t j = 0; j < 2 * num_pipes; ++j) {
-                close(pipe_fds[j]);
+                close(pipeFds[j]);
             }
 
             // Execute the command (this function will handle I/O redirection for the specific command)
-            execute_single_command(commands[i]);
+            execSingCmnd(cmnds[i]);
             exit(EXIT_FAILURE); // Should not be reached if execvp succeeds
         } else if (pid < 0) {
             perror("fork");
@@ -231,18 +214,41 @@ void execute_piped_commands(const string& command_line) {
 
     // Parent closes all pipe fds
     for (size_t i = 0; i < 2 * num_pipes; ++i) {
-        close(pipe_fds[i]);
+        close(pipeFds[i]);
     }
 
     // Parent waits for all children to complete
-    for (size_t i = 0; i < commands.size(); ++i) {
+    for (size_t i = 0; i < cmnds.size(); ++i) {
         wait(NULL);
     }
 }
 
 
-void execute_command_line(string& line) {
+void execCmndLn(string& line) {
     if (line.empty()) return;
+
+    // First, tokenize the line to check the command.
+    stringstream temp_stream(line);
+    vector<string> tokens;
+    string token;
+    while (temp_stream >> token) {
+        tokens.push_back(token);
+    }
+
+    if (tokens.empty()) return;
+
+    //  
+    if (tokens[0] == "exit") {
+        cout << "\nGG ! Bye." << endl;
+        exit(0);
+    }
+
+    // If the command is a simple 'cd' (not in a pipe), execute it directly.
+    // We check for '|' in the original line to ensure it's not a pipeline.
+    if (tokens[0] == "cd" && line.find('|') == string::npos) {
+        cmndCd(tokens);
+        return; 
+    }   
 
     bool isBkgd = false;
     // Trim trailing whitespace and check for '&'
@@ -251,7 +257,7 @@ void execute_command_line(string& line) {
         isBkgd = true;
         line.erase(pos);
     }
-    
+
     // Fork once to create a command manager process
     pid_t pid = fork();
 
@@ -261,12 +267,12 @@ void execute_command_line(string& line) {
     }
 
     if (pid == 0) { // Child Process
-        // make child processes respond to signals by defauld
+        // make child processes respond to signalHandler by defauld
         signal(SIGINT, SIG_DFL);
         signal(SIGTSTP, SIG_DFL);
 
         // This child will set up pipes and run the command(s)
-        execute_piped_commands(line);
+        execPipedCmnd(line);
         exit(EXIT_SUCCESS); // Child exits after its job is done
     } else { // Parent process
         if (!isBkgd) {

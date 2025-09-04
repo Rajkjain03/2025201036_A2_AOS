@@ -1,14 +1,14 @@
-#include <iostream>
-#include <unistd.h>
-#include "prompt.h"
-#include "globals.h"
-
+#include "myshell.h"
 
 using namespace std;
 
 //some cool fonts to display when first executed 
 void customShellDisp()
-{   //reset to default style
+    
+{   //clear the terminal screen 
+    system("clear");
+    
+    //reset to default style
     const string RESET = "\033[0m";
     // Text Styles
     const string BOLD = "\033[1m";

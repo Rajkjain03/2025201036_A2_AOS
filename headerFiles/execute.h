@@ -2,7 +2,8 @@
 #define EXECUTE_H
 
 #include <string>
-
-void execute_command_line(std::string& line);
+using namespace std;
+void cmndCd(const vector<string>& cmdToken);
+void execCmndLn(string& line);
 
 #endif // EXECUTE_H
