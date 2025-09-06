@@ -105,7 +105,6 @@ int main()
                         cout << "\b \b"; fflush(stdout);
                     }
                 }
-                //  THIS IS THE CORRECT CTRL-D FIX 
                 else if (c == 4) { // CTRL-D character
                     if (ip.empty()) {
                         // If the line is empty, it's our signal to exit.
